@@ -29,6 +29,9 @@ import com.example.wordgame.ui.onboarding.OnboardingScreen
 import com.example.wordgame.ui.settings.SettingsScreen
 import androidx.compose.runtime.collectAsState
 
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+
+
 @Composable
 fun WordGameApp(container: AppContainer) {
     val navController = rememberNavController()

@@ -37,21 +37,35 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 
     composeOptions {
         kotlinCompilerExtensionVersion = "1.5.8"
     }
 
+    // ▶ Make Java compilation use 17 (fixes 1.8 vs 17 mismatch)
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
+
+    // Keep
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
     }
 
+    // Kotlin compiler target
     kotlinOptions {
         jvmTarget = "17"
     }
+}
+
+// ▶ Use Kotlin JVM toolchain 17 (recommended by Gradle/Kotlin)
+kotlin {
+    jvmToolchain(17)
 }
 
 dependencies {
@@ -75,6 +89,9 @@ dependencies {
     implementation("com.squareup.retrofit2:retrofit:2.11.0")
     implementation("com.squareup.retrofit2:converter-kotlinx-serialization:2.11.0")
     implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
+
+    // Material 3 XML theme dependency (needed for Theme.Material3.*)
+    implementation("com.google.android.material:material:1.12.0")
 
     implementation("androidx.datastore:datastore-preferences:1.1.1")
 
