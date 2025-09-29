@@ -44,8 +44,7 @@ class LeaderboardRepository(
         if (publicCode.isBlank()) {
             return@withContext Result.failure(IllegalStateException("Dreamlo public code not configured"))
         }
-        dreamloClient.fetchLeaderboard(publicCode).map { response ->
-            val dtoEntries = response.dreamlo?.leaderboard?.entry.orEmpty()
+        dreamloClient.fetchLeaderboard(publicCode).map { dtoEntries ->
             val mapped = dtoEntries.mapNotNull { it.toLeaderboardEntry() }
             val sorted = mapped
                 .sortedWith(
@@ -97,4 +96,3 @@ class LeaderboardRepository(
         return runCatching { Instant.parse(dateString).toEpochMilli() }.getOrNull()
     }
 }
-

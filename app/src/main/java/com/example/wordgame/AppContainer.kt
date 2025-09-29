@@ -15,8 +15,15 @@ import com.example.wordgame.presentation.leaderboard.LeaderboardViewModel
 import com.example.wordgame.presentation.onboarding.OnboardingViewModel
 import com.example.wordgame.presentation.settings.SettingsViewModel
 import com.google.gson.Gson
+import com.google.gson.GsonBuilder
+import com.google.gson.JsonDeserializationContext
+import com.google.gson.JsonDeserializer
+import com.google.gson.JsonElement
+import com.google.gson.reflect.TypeToken
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
+import java.lang.reflect.Type
+import java.util.concurrent.TimeUnit
 
 class AppContainer(context: Context) {
     private val appContext = context.applicationContext
@@ -28,10 +35,22 @@ class AppContainer(context: Context) {
     private val okHttpClient by lazy {
         OkHttpClient.Builder()
             .addInterceptor(loggingInterceptor)
+            .connectTimeout(15, TimeUnit.SECONDS)  // Increased from 10 to 15 seconds
+            .readTimeout(15, TimeUnit.SECONDS)     // Increased from 10 to 15 seconds
+            .writeTimeout(15, TimeUnit.SECONDS)    // Added write timeout
             .build()
     }
 
-    private val gson by lazy { Gson() }
+    // Custom Gson with adapter for Dreamlo response
+    private val gson by lazy {
+        GsonBuilder()
+            .registerTypeAdapter(
+                object : TypeToken<List<DreamloEntryDto>>() {}.type,
+                DreamloEntryListAdapter()
+            )
+            .create()
+    }
+    
     private val dreamloClient by lazy { DreamloClient(okHttpClient, gson) }
 
     val playerPreferences: PlayerPreferences by lazy { PlayerPreferences(appContext) }
@@ -66,22 +85,41 @@ class AppContainer(context: Context) {
         LeaderboardViewModel(leaderboardRepository)
     }
 
-    fun settingsFactory(): ViewModelProvider.Factory = factory {
-        SettingsViewModel(playerPreferences)
-    }
+    fun settingsFactory(): ViewModelProvider.Factory = factory { SettingsViewModel(playerPreferences) }
 
-    private fun <T : ViewModel> factory(creator: () -> T): ViewModelProvider.Factory =
-        object : ViewModelProvider.Factory {
-            override fun <T1 : ViewModel> create(modelClass: Class<T1>): T1 {
-                val viewModel = creator.invoke()
-                if (modelClass.isAssignableFrom(viewModel::class.java)) {
-                    @Suppress("UNCHECKED_CAST")
-                    return viewModel as T1
-                }
-                throw IllegalArgumentException("Unknown ViewModel class $modelClass")
-            }
+    private inline fun <T : ViewModel> factory(crossinline creator: () -> T): ViewModelProvider.Factory {
+        return object : ViewModelProvider.Factory {
+            override fun <T : ViewModel> create(modelClass: Class<T>): T = creator() as T
         }
+    }
 }
 
+// Data class for Dreamlo entry
+data class DreamloEntryDto(
+    val name: String? = null,
+    val score: Int? = null,
+    val seconds: Int? = null,
+    val date: String? = null
+)
 
-
+// Custom adapter to handle both single object and array for Dreamlo entries
+class DreamloEntryListAdapter : JsonDeserializer<List<DreamloEntryDto>> {
+    override fun deserialize(
+        element: JsonElement,
+        type: Type,
+        context: JsonDeserializationContext
+    ): List<DreamloEntryDto> {
+        return when {
+            element.isJsonNull -> emptyList()
+            element.isJsonArray -> {
+                element.asJsonArray.mapNotNull { 
+                    if (it.isJsonObject) context.deserialize(it, DreamloEntryDto::class.java) else null
+                }
+            }
+            element.isJsonObject -> {
+                listOf(context.deserialize(element, DreamloEntryDto::class.java))
+            }
+            else -> emptyList()
+        }
+    }
+}

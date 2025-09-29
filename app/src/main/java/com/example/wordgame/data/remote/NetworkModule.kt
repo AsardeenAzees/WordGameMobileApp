@@ -18,8 +18,9 @@ object NetworkModule {
 
     private fun baseClient(): OkHttpClient = OkHttpClient.Builder()
         .addInterceptor(loggingInterceptor())
-        .connectTimeout(10, TimeUnit.SECONDS)
-        .readTimeout(10, TimeUnit.SECONDS)
+        .connectTimeout(15, TimeUnit.SECONDS)  // Increased from 10 to 15 seconds
+        .readTimeout(15, TimeUnit.SECONDS)     // Increased from 10 to 15 seconds
+        .writeTimeout(15, TimeUnit.SECONDS)    // Added write timeout
         .build()
 
     private fun loggingInterceptor(): Interceptor = HttpLoggingInterceptor().apply {
