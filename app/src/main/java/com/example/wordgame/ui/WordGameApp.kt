@@ -172,5 +172,5 @@ private fun appBarTitle(route: String?): String = when (route) {
     Destinations.GAME -> "Fun Guessing"
     Destinations.LEADERBOARD -> "Leaderboard"
     Destinations.SETTINGS -> "Settings"
-    else -> "Welcome"
+    else -> "Welcome to the Game"
 }

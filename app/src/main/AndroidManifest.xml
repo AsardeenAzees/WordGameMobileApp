@@ -6,9 +6,9 @@
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
-        android:icon="@android:drawable/ic_dialog_info"
+        android:icon="@drawable/ic_word_game"
         android:label="@string/app_name"
-        android:roundIcon="@android:drawable/ic_dialog_info"
+        android:roundIcon="@drawable/ic_word_game"
         android:supportsRtl="true"
         android:theme="@style/Theme.WordGame"
         android:networkSecurityConfig="@xml/network_security_config">
