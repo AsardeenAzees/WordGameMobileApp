@@ -37,7 +37,4 @@ object NetworkModule {
 
     fun provideClueApi(): ClueApi =
         retrofit("https://api.datamuse.com/").create(ClueApi::class.java)
-
-    fun provideDreamloApi(): DreamloApi =
-        retrofit("https://dreamlo.com/lb/").create(DreamloApi::class.java)
 }

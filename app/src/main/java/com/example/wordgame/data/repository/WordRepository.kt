@@ -18,18 +18,34 @@ class WordRepository(
         runCatching {
             val remoteWord = randomWordApi.getRandomWord(length = targetLength).firstOrNull()
             if (remoteWord.isNullOrBlank()) throw IllegalStateException("Empty remote response")
-            GameWord(remoteWord.lowercase(), difficulty = level)
-        }.getOrElse {
+            val cleanWord = remoteWord.lowercase().filter { it.isLetter() }
+            if (cleanWord.length < 3) throw IllegalStateException("Word too short")
+            GameWord(cleanWord, difficulty = level)
+        }.getOrElse { exception ->
+            // Log the exception for debugging
+            println("Failed to fetch remote word: ${exception.message}")
             localWordDataSource.randomWordForLevel(level)
         }
     }
 
     suspend fun fetchTipFor(word: String): String? = withContext(Dispatchers.IO) {
-        val safeWord = word.lowercase()
-        val synonym = runCatching { clueApi.getSynonyms(safeWord).firstOrNull()?.word }.getOrNull()
-        if (!synonym.isNullOrBlank()) return@withContext "Synonym: $synonym"
+        val safeWord = word.lowercase().filter { it.isLetter() }
+        if (safeWord.length < 3) return@withContext null
+        
+        val synonym = runCatching { 
+            clueApi.getSynonyms(safeWord).firstOrNull()?.word?.filter { it.isLetter() }
+        }.getOrElse { exception ->
+            println("Failed to fetch synonym: ${exception.message}")
+            null
+        }
+        if (!synonym.isNullOrBlank() && synonym != safeWord) return@withContext "Synonym: $synonym"
 
-        val rhyme = runCatching { clueApi.getRhymes(safeWord).firstOrNull()?.word }.getOrNull()
-        rhyme?.let { "Rhymes with: $it" }
+        val rhyme = runCatching { 
+            clueApi.getRhymes(safeWord).firstOrNull()?.word?.filter { it.isLetter() }
+        }.getOrElse { exception ->
+            println("Failed to fetch rhyme: ${exception.message}")
+            null
+        }
+        if (!rhyme.isNullOrBlank() && rhyme != safeWord) "Rhymes with: $rhyme" else null
     }
 }

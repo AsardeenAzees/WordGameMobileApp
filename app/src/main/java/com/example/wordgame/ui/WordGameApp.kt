@@ -8,10 +8,13 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -27,7 +30,7 @@ import com.example.wordgame.ui.game.GameScreen
 import com.example.wordgame.ui.leaderboard.LeaderboardScreen
 import com.example.wordgame.ui.onboarding.OnboardingScreen
 import com.example.wordgame.ui.settings.SettingsScreen
-import androidx.compose.runtime.collectAsState
+import kotlinx.coroutines.launch
 
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 
@@ -36,12 +39,35 @@ import androidx.compose.runtime.collectAsState
 fun WordGameApp(container: AppContainer) {
     val navController = rememberNavController()
     val backstackEntry by navController.currentBackStackEntryAsState()
+    val coroutineScope = rememberCoroutineScope()
     val currentRoute = backstackEntry?.destination?.route
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text(appBarTitle(currentRoute)) },
+                navigationIcon = {
+                    if (currentRoute != Destinations.ONBOARDING) {
+                        IconButton(
+                            onClick = {
+                                coroutineScope.launch {
+                                    container.playerPreferences.reset()
+                                    navController.navigate(Destinations.ONBOARDING) {
+                                        popUpTo(navController.graph.findStartDestination().id) {
+                                            inclusive = true
+                                        }
+                                        launchSingleTop = true
+                                    }
+                                }
+                            }
+                        ) {
+                            Icon(
+                                painter = painterResource(id = android.R.drawable.ic_menu_revert),
+                                contentDescription = "Start over"
+                            )
+                        }
+                    }
+                },
                 actions = {
                     if (currentRoute == Destinations.GAME) {
                         IconButton(onClick = { navController.navigate(Destinations.LEADERBOARD) }) {
@@ -63,8 +89,8 @@ fun WordGameApp(container: AppContainer) {
     ) { padding ->
         WordGameNavHost(
             navController = navController,
-            modifier = Modifier.padding(padding),
-            container = container
+            container = container,
+            modifier = Modifier.padding(padding)
         )
     }
 }
@@ -72,9 +98,11 @@ fun WordGameApp(container: AppContainer) {
 @Composable
 private fun WordGameNavHost(
     navController: NavHostController,
-    modifier: Modifier = Modifier,
-    container: AppContainer
+    container: AppContainer,
+    modifier: Modifier = Modifier
 ) {
+    val restartScope = rememberCoroutineScope()
+
     NavHost(
         navController = navController,
         startDestination = Destinations.ONBOARDING,
@@ -107,7 +135,18 @@ private fun WordGameNavHost(
                 onRequestClue = viewModel::useClue,
                 onNextLevel = viewModel::proceedToNextLevel,
                 onRetryLevel = viewModel::retrySameLevel,
-                onSubmitScore = viewModel::sendScoreToLeaderboard
+                onSubmitScore = viewModel::sendScoreToLeaderboard,
+                onQuitGame = {
+                    restartScope.launch {
+                        container.playerPreferences.reset()
+                        navController.navigate(Destinations.ONBOARDING) {
+                            popUpTo(navController.graph.findStartDestination().id) {
+                                inclusive = true
+                            }
+                            launchSingleTop = true
+                        }
+                    }
+                }
             )
         }
         composable(Destinations.LEADERBOARD) {
@@ -130,7 +169,7 @@ private fun WordGameNavHost(
 }
 
 private fun appBarTitle(route: String?): String = when (route) {
-    Destinations.GAME -> "Guess"
+    Destinations.GAME -> "Fun Guessing"
     Destinations.LEADERBOARD -> "Leaderboard"
     Destinations.SETTINGS -> "Settings"
     else -> "Welcome"

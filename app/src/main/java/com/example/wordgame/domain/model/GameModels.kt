@@ -40,6 +40,7 @@ data class PlayerProfile(
 data class LeaderboardEntry(
     val player: String,
     val score: Int,
+    val timeSeconds: Int,
     val rank: Int? = null,
     val timestamp: Long? = null
 )

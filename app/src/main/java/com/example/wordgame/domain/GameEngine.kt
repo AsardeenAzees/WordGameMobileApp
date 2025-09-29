@@ -16,8 +16,10 @@ class GameEngine(
     private var attemptsLeft: Int = config.maxAttempts
     private var score: Int = config.startingScore
     private var wrongGuesses: Int = 0
+    private var totalAttempts: Int = 0
     private val usedClues = mutableSetOf<ClueType>()
     private val revealedLetters = mutableSetOf<Char>()
+    private val clueHistory = mutableListOf<ClueResult>() // For clue stacking
     private var status: GameStatus = GameStatus.PLAYING
 
     fun startNewRound(word: GameWord, seedScore: Int? = null) {
@@ -25,9 +27,14 @@ class GameEngine(
         attemptsLeft = config.maxAttempts
         score = seedScore ?: config.startingScore
         wrongGuesses = 0
+        totalAttempts = 0
         usedClues.clear()
         revealedLetters.clear()
+        clueHistory.clear() // Clear clue history for new round
         status = GameStatus.PLAYING
+        
+        // Reveal initial letters based on difficulty level
+        revealInitialLettersForLevel(word.difficulty)
     }
 
     fun submitGuess(guess: String, elapsedSeconds: Int): GuessResult {
@@ -73,7 +80,31 @@ class GameEngine(
         )
     }
 
-    fun applyClue(type: ClueType): ClueResult? {
+    private fun revealInitialLettersForLevel(level: Int) {
+        val count = when (level) {
+            1 -> 2 // Reveal 2 letters for level 1
+            2 -> 1 // Reveal 1 letter for level 2
+            else -> 0 // Reveal 0 letters for level 3 and higher
+        }
+        revealInitialLetters(count)
+    }
+
+    private fun revealInitialLetters(count: Int) {
+        if (count <= 0) return
+        val letters = currentWord.value.withIndex()
+            .filter { it.value.isLetter() }
+        if (letters.isEmpty()) return
+        val uniqueOrder = letters.map { it.value }.distinct()
+        val targetLetters = mutableSetOf<Char>()
+        var index = 0
+        while (targetLetters.size < count && index < uniqueOrder.size) {
+            targetLetters += uniqueOrder[index]
+            index++
+        }
+        revealedLetters.addAll(targetLetters)
+    }
+
+    fun applyClue(type: ClueType, letter: Char? = null): ClueResult? {
         if (!::currentWord.isInitialized) error("Call startNewRound first")
         if (!canUseClue(type) || status != GameStatus.PLAYING) return null
 
@@ -90,7 +121,10 @@ class GameEngine(
             }
             ClueType.WORD_TIP -> currentWord.hint ?: "Keep trying!"
         }
-        return ClueResult(type = type, message = message, cost = config.cluePenalty)
+        
+        val clueResult = ClueResult(type = type, message = message, cost = config.cluePenalty)
+        clueHistory.add(clueResult) // Add to clue history for stacking
+        return clueResult
     }
 
     private fun canUseClue(type: ClueType): Boolean {
@@ -98,7 +132,7 @@ class GameEngine(
         return when (type) {
             ClueType.LETTER_COUNT -> true
             ClueType.LETTER_OCCURRENCE -> true
-            ClueType.WORD_TIP -> wrongGuesses >= 5
+            ClueType.WORD_TIP -> wrongGuesses >= 2 || currentWord.hint != null
         }
     }
 
@@ -111,6 +145,9 @@ class GameEngine(
         usedClues = usedClues.toSet(),
         status = status
     )
+    
+    // Get clue history for UI display
+    fun getClueHistory(): List<ClueResult> = clueHistory.toList()
 
     fun status(): GameStatus = status
 

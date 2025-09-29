@@ -17,8 +17,8 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        buildConfigField("String", "DREAMLO_PUBLIC_CODE", "\"\"")
-        buildConfigField("String", "DREAMLO_PRIVATE_CODE", "\"\"")
+        buildConfigField("String", "DREAMLO_PUBLIC_CODE", "\"68d983808f412f1fdc4dab4e\"")
+        buildConfigField("String", "DREAMLO_PRIVATE_CODE", "\"qgJJmGxyfECJr2jyR4hstA1paG8AzaAEilshlEv8q2nQ\"")
     }
 
     buildTypes {
@@ -44,7 +44,7 @@ android {
         kotlinCompilerExtensionVersion = "1.5.8"
     }
 
-    // ▶ Make Java compilation use 17 (fixes 1.8 vs 17 mismatch)
+    // ??? Make Java compilation use 17 (fixes 1.8 vs 17 mismatch)
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
@@ -63,7 +63,7 @@ android {
     }
 }
 
-// ▶ Use Kotlin JVM toolchain 17 (recommended by Gradle/Kotlin)
+// ??? Use Kotlin JVM toolchain 17 (recommended by Gradle/Kotlin)
 kotlin {
     jvmToolchain(17)
 }
@@ -88,7 +88,9 @@ dependencies {
 
     implementation("com.squareup.retrofit2:retrofit:2.11.0")
     implementation("com.squareup.retrofit2:converter-kotlinx-serialization:2.11.0")
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
+    implementation("com.google.code.gson:gson:2.11.0")
 
     // Material 3 XML theme dependency (needed for Theme.Material3.*)
     implementation("com.google.android.material:material:1.12.0")
@@ -100,3 +102,4 @@ dependencies {
     androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")
     androidTestImplementation("androidx.compose.ui:ui-test-junit4")
 }
+

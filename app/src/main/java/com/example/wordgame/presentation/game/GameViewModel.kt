@@ -78,9 +78,25 @@ class GameViewModel(
             timerJob?.cancel()
         }
 
-        viewModelScope.launch {
-            if (result.isCorrect) {
+        if (result.isCorrect) {
+            val playerName = state.value.playerName
+            viewModelScope.launch {
                 playerPreferences.updateBestScore(result.updatedScore)
+                val sanitizedName = playerName.trim()
+                if (sanitizedName.isNotBlank()) {
+                    val submission = leaderboardRepository.submitScore(
+                        name = sanitizedName,
+                        score = result.updatedScore,
+                        timeSeconds = elapsed
+                    )
+                    submission.onFailure { error ->
+                        val fallback = error.message ?: "Could not post score online right now"
+                        _state.update { current ->
+                            val base = current.message ?: result.message
+                            current.copy(message = listOfNotNull(base, fallback).joinToString("\n").ifBlank { fallback })
+                        }
+                    }
+                }
             }
         }
 
@@ -92,14 +108,16 @@ class GameViewModel(
                 currentGuess = if (result.isCorrect) "" else it.currentGuess,
                 status = snapshot.status,
                 usedClues = snapshot.usedClues,
-                obscuredWord = snapshot.obscuredWord
+                obscuredWord = snapshot.obscuredWord,
+                // Update clue history
+                clueHistory = engine.getClueHistory()
             )
         }
     }
 
-    fun useClue(type: ClueType) {
-        val clue: ClueResult = engine.applyClue(type) ?: run {
-            _state.update { it.copy(clueMessage = "Clue not available yet") }
+    fun useClue(type: ClueType, letter: Char? = null) {
+        val clue: ClueResult = engine.applyClue(type, letter) ?: run {
+            _state.update { it.copy(message = "Clue not available yet") }
             return
         }
         val snapshot = engine.snapshot(state.value.elapsedSeconds)
@@ -107,26 +125,34 @@ class GameViewModel(
             it.copy(
                 score = snapshot.score,
                 usedClues = snapshot.usedClues,
+                // Instead of single clueMessage, we now use clueHistory
                 clueMessage = "-${clue.cost} pts: ${clue.message}",
-                obscuredWord = snapshot.obscuredWord
+                obscuredWord = snapshot.obscuredWord,
+                // Update clue history
+                clueHistory = engine.getClueHistory()
             )
         }
     }
 
     fun sendScoreToLeaderboard() {
-        val name = state.value.playerName
+        val name = state.value.playerName.trim()
         if (name.isBlank()) {
             _state.update { it.copy(message = "Set your player name first in Settings") }
             return
         }
         val score = state.value.score
+        val timeSeconds = state.value.elapsedSeconds
         viewModelScope.launch {
             _state.update { it.copy(isSubmittingScore = true) }
-            val success = leaderboardRepository.submitScore(name, score)
+            val result = leaderboardRepository.submitScore(name, score, timeSeconds)
+            val message = result.fold(
+                onSuccess = { "Score submitted!" },
+                onFailure = { it.message ?: "Unable to submit score right now" }
+            )
             _state.update {
                 it.copy(
                     isSubmittingScore = false,
-                    message = if (success) "Score submitted!" else "Unable to submit score right now"
+                    message = message
                 )
             }
         }
@@ -141,28 +167,40 @@ class GameViewModel(
                     message = null,
                     clueMessage = null,
                     currentGuess = "",
-                    status = GameStatus.PLAYING
+                    status = GameStatus.PLAYING,
+                    clueHistory = emptyList() // Clear clue history for new round
                 )
             }
-            val baseWord = wordRepository.fetchWordForLevel(currentLevel)
-            val tip = wordRepository.fetchTipFor(baseWord.value)
-            val word = if (!tip.isNullOrBlank()) baseWord.copy(hint = tip) else baseWord
-            engine.startNewRound(word, seedScore = seedScore)
-            _state.update {
-                it.copy(
-                    isLoading = false,
-                    level = currentLevel,
-                    score = seedScore,
-                    attemptsLeft = config.maxAttempts,
-                    obscuredWord = engine.snapshot(0).obscuredWord,
-                    elapsedSeconds = 0,
-                    usedClues = emptySet(),
-                    clueMessage = null
-                )
+            try {
+                val baseWord = wordRepository.fetchWordForLevel(currentLevel)
+                val tip = wordRepository.fetchTipFor(baseWord.value)
+                val word = if (!tip.isNullOrBlank()) baseWord.copy(hint = tip) else baseWord
+                engine.startNewRound(word, seedScore = seedScore)
+                _state.update {
+                    it.copy(
+                        isLoading = false,
+                        level = currentLevel,
+                        score = seedScore,
+                        attemptsLeft = config.maxAttempts,
+                        obscuredWord = engine.snapshot(0).obscuredWord,
+                        elapsedSeconds = 0,
+                        usedClues = emptySet(),
+                        clueMessage = null,
+                        clueHistory = engine.getClueHistory() // Initialize clue history
+                    )
+                }
+                startTimer()
+            } catch (e: Exception) {
+                _state.update {
+                    it.copy(
+                        isLoading = false,
+                        message = "Failed to load word. Please try again."
+                    )
+                }
             }
-            startTimer()
         }
     }
+
 
     private fun startTimer() {
         timerJob?.cancel()
@@ -195,5 +233,7 @@ data class GameUiState(
     val usedClues: Set<ClueType> = emptySet(),
     val status: GameStatus = GameStatus.PLAYING,
     val isLoading: Boolean = false,
-    val isSubmittingScore: Boolean = false
+    val isSubmittingScore: Boolean = false,
+    // Add clue history for stacking clues
+    val clueHistory: List<ClueResult> = emptyList()
 )
