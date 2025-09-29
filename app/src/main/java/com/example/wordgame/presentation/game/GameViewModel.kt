@@ -10,6 +10,7 @@ import com.example.wordgame.domain.model.ClueResult
 import com.example.wordgame.domain.model.ClueType
 import com.example.wordgame.domain.model.GameConfig
 import com.example.wordgame.domain.model.GameStatus
+import com.example.wordgame.domain.model.GuessHistoryItem
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -82,6 +83,9 @@ class GameViewModel(
             val playerName = state.value.playerName
             viewModelScope.launch {
                 playerPreferences.updateBestScore(result.updatedScore)
+                // Get the current word from the engine's snapshot
+                val currentWord = engine.snapshot(elapsed).word.value
+                playerPreferences.addGuessToHistory(currentWord, true)
                 val sanitizedName = playerName.trim()
                 if (sanitizedName.isNotBlank()) {
                     val submission = leaderboardRepository.submitScore(
@@ -97,6 +101,11 @@ class GameViewModel(
                         }
                     }
                 }
+            }
+        } else {
+            // Add incorrect guess to history
+            viewModelScope.launch {
+                playerPreferences.addGuessToHistory(state.value.currentGuess, false)
             }
         }
 

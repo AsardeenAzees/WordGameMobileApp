@@ -3,6 +3,7 @@ package com.example.wordgame.data.remote
 import com.google.gson.Gson
 import com.google.gson.JsonElement
 import com.google.gson.JsonObject
+import com.google.gson.JsonSyntaxException
 import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
@@ -79,6 +80,10 @@ class DreamloClient(
             when (exception) {
                 is UnknownHostException -> {
                     throw IOException("Unable to resolve dreamlo.com. Please check your internet connection.", exception)
+                }
+                is JsonSyntaxException -> {
+                    // Handle malformed JSON gracefully
+                    throw IOException("Dreamlo returned malformed JSON. This is temporary and will resolve on refresh.", exception)
                 }
                 else -> throw exception
             }

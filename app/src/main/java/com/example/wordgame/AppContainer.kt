@@ -44,6 +44,7 @@ class AppContainer(context: Context) {
     // Custom Gson with adapter for Dreamlo response
     private val gson by lazy {
         GsonBuilder()
+            .setLenient() // Allow malformed JSON
             .registerTypeAdapter(
                 object : TypeToken<List<DreamloEntryDto>>() {}.type,
                 DreamloEntryListAdapter()

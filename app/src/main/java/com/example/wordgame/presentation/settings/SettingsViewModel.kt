@@ -3,6 +3,7 @@ package com.example.wordgame.presentation.settings
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.wordgame.data.local.PlayerPreferences
+import com.example.wordgame.domain.model.GuessHistoryItem
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -22,7 +23,8 @@ class SettingsViewModel(
                 _state.update {
                     it.copy(
                         name = profile.name,
-                        bestScore = profile.bestScore
+                        bestScore = profile.bestScore,
+                        guessHistory = profile.guessHistory
                     )
                 }
             }
@@ -58,5 +60,6 @@ data class SettingsUiState(
     val name: String = "",
     val bestScore: Int = 0,
     val isSaving: Boolean = false,
-    val message: String? = null
+    val message: String? = null,
+    val guessHistory: List<GuessHistoryItem> = emptyList()
 )
