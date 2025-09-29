@@ -18,6 +18,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -102,7 +103,12 @@ fun LeaderboardScreen(
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     itemsIndexed(state.entries) { index, entry ->
+                        // Safe handling of entry data
                         val resolvedRank = entry.rank ?: (index + 1)
+                        val playerName = entry.player.takeIf { it.isNotBlank() } ?: "Anonymous"
+                        val playerScore = entry.score
+                        val playerTime = entry.timeSeconds
+                        
                         val highlight = resolvedRank in 1..3
                         val containerColor = if (highlight) {
                             when (resolvedRank) {
@@ -124,7 +130,9 @@ fun LeaderboardScreen(
                         } else {
                             MaterialTheme.colorScheme.onSurface
                         }
-                        val timeDisplay = if (entry.timeSeconds == Int.MAX_VALUE) "?" else "${entry.timeSeconds}s"
+                        val timeDisplay = if (playerTime == Int.MAX_VALUE) "?" else "${playerTime}s"
+                        // Use a more compatible way to set alpha
+                        val secondaryTextColor = contentColor.copy(alpha = 0.8f)
 
                         Card(
                             modifier = Modifier.fillMaxWidth(),
@@ -158,15 +166,15 @@ fun LeaderboardScreen(
                                         .padding(horizontal = 16.dp)
                                 ) {
                                     Text(
-                                        text = entry.player,
+                                        text = playerName,
                                         style = MaterialTheme.typography.titleMedium,
                                         color = contentColor,
                                         fontWeight = if (highlight) FontWeight.Bold else FontWeight.Normal
                                     )
                                     Text(
-                                        text = "${entry.score} pts",
+                                        text = "${playerScore} pts",
                                         style = MaterialTheme.typography.bodyMedium,
-                                        color = contentColor.copy(alpha = 0.8f)
+                                        color = secondaryTextColor
                                     )
                                 }
                                 
@@ -174,7 +182,7 @@ fun LeaderboardScreen(
                                 Text(
                                     text = timeDisplay,
                                     style = MaterialTheme.typography.bodyMedium,
-                                    color = contentColor.copy(alpha = 0.8f),
+                                    color = secondaryTextColor,
                                     textAlign = TextAlign.End
                                 )
                             }

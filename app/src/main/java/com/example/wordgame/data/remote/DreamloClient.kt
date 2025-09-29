@@ -72,7 +72,7 @@ class DreamloClient(
                 
                 // Handle the Dreamlo JSON structure directly
                 val entries = parseDreamloResponse(jsonElement)
-                Result.success(entries)
+                entries
             }
         }.recoverCatching { exception ->
             // Better error handling for network issues
@@ -82,7 +82,7 @@ class DreamloClient(
                 }
                 else -> throw exception
             }
-        }.getOrThrow()
+        }
     }
     
     private fun parseDreamloResponse(element: JsonElement): List<DreamloEntryDto> {
